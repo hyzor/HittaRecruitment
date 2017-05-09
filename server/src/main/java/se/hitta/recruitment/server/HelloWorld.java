@@ -1,15 +1,22 @@
 package se.hitta.recruitment.server;
 
 import java.io.IOException;
+import java.util.ArrayList;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.json.*;
 
 public class HelloWorld extends HttpServlet
-{
-    private volatile boolean lastWasPut = false;
+{	
+    /**
+	 * 
+	 */
+	private static final long serialVersionUID = -718068643288335974L;
+	
+	private volatile boolean lastWasPut = false;
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
@@ -42,5 +49,9 @@ public class HelloWorld extends HttpServlet
     {
         this.lastWasPut = true;
         resp.setStatus(HttpServletResponse.SC_ACCEPTED);
+    }
+    
+    private void createPerson(String givenName, String familyName, String email, String homepage)
+    {
     }
 }
