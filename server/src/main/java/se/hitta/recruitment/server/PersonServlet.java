@@ -34,11 +34,11 @@ public class PersonServlet extends HttpServlet
 	 */
 	private static final long serialVersionUID = -3330161663073409678L;
 	
-	// Thread safe volatile and concurrent hash map
-	private volatile Map<Integer, Person> personsMap = new ConcurrentHashMap<Integer, Person>();
+	// Thread safe concurrent hash map
+	private final Map<Integer, Person> personsMap = new ConcurrentHashMap<Integer, Person>();
 	
 	// Thread safe atomic integer (for ID generation)
-	private AtomicInteger idGen = new AtomicInteger();
+	private final AtomicInteger idGen = new AtomicInteger();
 	
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException
