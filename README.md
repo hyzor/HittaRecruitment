@@ -16,4 +16,4 @@ Each person has a generated ID (incremental number) that is atomic and thread sa
 * Person: Java class that encapsulates person information. Also has some helper functions such as JsonObject conversion.
 
 ### How to run
-I personally used Eclipse for development. Compile and run the PersonServer class. Then connect to http://localhost:8080 and use the service as usual.
+I personally used Eclipse for development. Compile and run the PersonServer class. Then connect to http://localhost:8080 and use the service as specified in the README.txt file.
