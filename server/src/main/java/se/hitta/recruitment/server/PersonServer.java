@@ -14,7 +14,6 @@ public class PersonServer
 		
 		ServletContextHandler context = new ServletContextHandler();
 		context.setContextPath("/");
-		context.addServlet(HelloWorld.class, "");
 		context.addServlet(PersonServlet.class, "/person/*");
 		
 		HandlerCollection handlers = new HandlerCollection();
