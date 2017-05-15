@@ -3,7 +3,6 @@ package se.hitta.recruitment.server;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -11,6 +10,11 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import javax.json.Json;
+import javax.json.JsonArray;
+import javax.json.JsonArrayBuilder;
+import javax.json.JsonObject;
+import javax.json.JsonValue;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -43,6 +47,9 @@ public class PersonServlet extends HttpServlet
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException
     {
+    	resp.setContentType("text/html; charset=UTF-8");
+    	resp.setCharacterEncoding("UTF-8");
+    	
     	final PrintWriter out = resp.getWriter();
     	
     	Integer id = null;
@@ -61,24 +68,20 @@ public class PersonServlet extends HttpServlet
     		success = true;
     		
         	if (personsMap.containsKey(id))
-        	{
-        		out.write(personsMap.get(id).toString() + "\n");
-                resp.setStatus(HttpServletResponse.SC_OK);
-        	}
-        	else
-        	{
-                resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
-            	out.write("GET: Person was not found!\n");
+        	{        	
+        		out.write(personsMap.get(id).toJsonObj().toString() + "\n");
         	}
     	}
     	
     	// User has requested to fetch persons with a specific gender
     	else if (gender != null)
-    	{
+    	{    		
     		success = true;
     		
     		Iterator<Entry<Integer, Person>> it = personsMap.entrySet().iterator();
     		boolean genderFound = false;
+    		
+    		JsonArrayBuilder arrBuilder = Json.createArrayBuilder();
     		
     		while (it.hasNext())
     		{
@@ -87,39 +90,42 @@ public class PersonServlet extends HttpServlet
     			
     			if (curPerson.gender.equalsIgnoreCase(gender))
     			{
-    				out.write(curPerson.toJsonObj().toString() + "\n");
+    	    		arrBuilder.add(curPerson.toJsonObjBuilder());
     				genderFound = true;
     			}
-    			
     		}
     		
-    		if (!genderFound)
-    		{
-    			out.write("No person with gender " + gender + " was found!\n");
-    		}
-    		
+    		JsonArray jsonArr = arrBuilder.build();
+    		out.write(jsonArr.toString());
     	}
     	
     	// Fetch every person
     	else
     	{
     		Iterator<Entry<Integer, Person>> it = personsMap.entrySet().iterator();
+    		success = true;
+    		
+    		JsonArrayBuilder arrBuilder = Json.createArrayBuilder();
     		
     		while (it.hasNext())
     		{
     			Map.Entry<Integer, Person> pair = (Map.Entry<Integer, Person>)it.next();
     			Person curPerson = pair.getValue();
-    			out.write(curPerson.toJsonObj().toString() + "\n");    			
+    			arrBuilder.add(curPerson.toJsonObjBuilder());
     		}
+    		
+    		JsonArray jsonArr = arrBuilder.build();
+    		
+    		out.write(jsonArr.toString());
     	}
     	
     	if (success)
     	{
-        	out.write("GET: Successfully invoked!\n");
+    		resp.setStatus(HttpServletResponse.SC_OK);
     	}
     	else
     	{
-        	out.write("GET: Unsuccessful!\n");
+    		resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
     	}
     	
     }
@@ -136,40 +142,34 @@ public class PersonServlet extends HttpServlet
     
     @Override
     protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws IOException
-    {
-    	final PrintWriter out = resp.getWriter();
-    	
+    {    	
     	Model rdfModel = getInputRdfModel(req);
     	Person curPerson = null;
     	
     	Integer id = getIdFromPath(req.getPathInfo());
     	
-    	if (personsMap.containsKey(id))
+    	if (id != null)
     	{
-        	for (Resource personRes: rdfModel.filter(null, RDF.TYPE, FOAF.PERSON).subjects())
-        	{
-        		curPerson = createPerson(rdfModel, personRes);
-        		personsMap.put(id, curPerson);
-        	}
-        	
-	    	out.write("PUT: Person with id " + Integer.toString(id) + " updated!\n");
+            for (Resource personRes: rdfModel.filter(null, RDF.TYPE, FOAF.PERSON).subjects())
+            {
+            	curPerson = createPerson(rdfModel, personRes);
+            	curPerson.id = id;
+            	personsMap.put(id, curPerson);
+            }
+            	        	
             resp.setStatus(HttpServletResponse.SC_OK);
     	}
     	else
     	{
-	    	out.write("PUT: No person with id " + Integer.toString(id) + " was found! Skipping...\n");
-            resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
     	}
     }
     
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException
-    {
-    	final PrintWriter out = resp.getWriter();
-    	
+    {    	
     	Model rdfModel = getInputRdfModel(req);
     	
-    	Person lastSuccessfulPerson = null;
     	Person curPerson = null;
     	boolean personFound = false;
     	
@@ -188,8 +188,8 @@ public class PersonServlet extends HttpServlet
     			
     			if (pair.getValue().equals(curPerson))
     			{
-        			out.write(curPerson.getFullName() + " already added! Skipping...\n");
         			personFound = true;
+        			curPerson = pair.getValue();
         			break;
     			}
     		}
@@ -197,23 +197,30 @@ public class PersonServlet extends HttpServlet
     		// If it doesn't already exist, add it to our hash map
     		if (!personFound)
     		{
-        		lastSuccessfulPerson = curPerson;
+    			curPerson.id = idGen.incrementAndGet();
         		personsMap.put(curPerson.id, curPerson);
     		}
     	}
     	
-    	// Assuming that we can create multiple persons in one go, append the last person created
-    	// to the Location header
-    	if (lastSuccessfulPerson != null)
+    	// If the last person already exist, append it to the Location header
+    	if (curPerson != null)
     	{
-            resp.setStatus(HttpServletResponse.SC_CREATED);
-	        resp.addHeader("Location", "http://127.0.0.1:8080/person/" + lastSuccessfulPerson.id);
-	    	out.write("POST: One or more Persons successfully created!\n");
+    		if (personFound)
+    		{
+        		resp.setStatus(HttpServletResponse.SC_ACCEPTED);
+    		}
+    		else
+    		{
+                resp.setStatus(HttpServletResponse.SC_CREATED);
+    		}
+    		
+    		resp.addHeader("Location", "http://127.0.0.1:8080/person/" + curPerson.id);
     	}
+    	
+    	// Invalid POST request
     	else
     	{
-    		resp.setStatus(HttpServletResponse.SC_CONFLICT);
-	    	out.write("POST: No new person was created!\n");
+    		resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
     	}
     }
     
@@ -235,9 +242,7 @@ public class PersonServlet extends HttpServlet
 		Optional<Resource> email = Models.objectResource(rdfModel.filter(personRes, FOAF.MBOX, null));
 		Optional<Resource> homepage = Models.objectResource(rdfModel.filter(personRes, FOAF.HOMEPAGE, null));
 		
-		Integer id = idGen.incrementAndGet();
-		
-		return new Person(id, given_name.get().stringValue(), family_name.get().stringValue(),
-				gender.get().stringValue(), email.get().stringValue(), homepage.get().stringValue());
+		return new Person(-1, given_name.get().stringValue(), family_name.get().stringValue(),
+				gender.get().stringValue().toLowerCase(), email.get().stringValue(), homepage.get().stringValue());
     }
 }

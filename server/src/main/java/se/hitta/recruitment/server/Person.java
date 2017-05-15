@@ -2,6 +2,7 @@ package se.hitta.recruitment.server;
 
 import javax.json.Json;
 import javax.json.JsonObject;
+import javax.json.JsonObjectBuilder;
 
 public class Person 
 {
@@ -52,8 +53,13 @@ public class Person
 	}
 	
 	public JsonObject toJsonObj()
+	{		
+		return toJsonObjBuilder().build();		
+	}
+	
+	public JsonObjectBuilder toJsonObjBuilder()
 	{
-		JsonObject obj = Json.createObjectBuilder()
+		JsonObjectBuilder objBuilder = Json.createObjectBuilder()
 				.add(getFullName(), Json.createObjectBuilder()
 						.add("name", Json.createObjectBuilder()
 								.add("given", name_given)
@@ -61,10 +67,9 @@ public class Person
 						.add("gender", gender)
 						.add("email", Json.createArrayBuilder()
 								.add(getCleanEmail()))
-						.add("homepage", homepage))
-				.build();
+						.add("homepage", homepage));
 		
-		return obj;		
+		return objBuilder;
 	}
 	
 	public Integer id;
